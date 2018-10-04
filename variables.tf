@@ -1,5 +1,3 @@
-
-
 variable "upper_cpu_percentage_threashold" {
   description = "Percentage threashold which should be crossed to upscale the cluster"
   default     = 75
@@ -56,4 +54,14 @@ variable "ecs_cluster_name" {
 
 variable "autoscaling_group_name" {
   description = "Autoscaling group name which should be scaled"
+}
+
+variable "allow_scale_up" {
+  description = "Allow scale up of the instances"
+  default     = true
+}
+
+variable "allow_scale_down" {
+  description = "Allow scale down of the instances"
+  default     = true
 }

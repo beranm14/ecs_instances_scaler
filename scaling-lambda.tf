@@ -16,10 +16,35 @@ data "aws_iam_policy_document" "lambda" {
   }
 }
 
-data "archive_file" "main" {
+data "archive_file" "dotfiles" {
   type        = "zip"
-  source_file = "main.py"
-  output_path = "main.zip"
+  output_path = "${path.module}/main.zip"
+
+  source {
+    content  = "${file("${path.module}/scaling_function/main.py")}"
+    filename = "main.py"
+  }
+
+  source {
+    content  = "${file("${path.module}/scaling_function/metrics.py")}"
+    filename = "metrics.py"
+  }
+
+  source {
+    content  = "${file("${path.module}/scaling_function/consider_remove_instance.py")}"
+    filename = "consider_remove_instance.py"
+  }
+
+  source {
+    content  = "${file("${path.module}/scaling_function/capacity_classes.py")}"
+    filename = "capacity_classes.py"
+  }
+}
+
+data "null_data_source" "path-to-some-file" {
+  inputs {
+    filename = "${substr("${path.module}/main.zip", length(path.cwd) + 1, -1)}"
+  }
 }
 
 module "lambda" {
@@ -28,7 +53,7 @@ module "lambda" {
 
   name_prefix = "${ecs_cluster_name}-scaling-lambda"
 
-  filename = "main.zip"
+  filename = "${data.null_data_source.path-to-some-file.outputs.filename}"
 
   environment = {
     CPU_UPSCALE_LIMIT   = "${var.upper_cpu_percentage_threashold}"
@@ -36,6 +61,8 @@ module "lambda" {
     MEM_UPSCALE_LIMIT   = "${var.upper_ram_percentage_threashold}"
     MEM_DOWNSCALE_LIMIT = "${var.lower_ram_percentage_threashold}"
     ECS_CLUSTER         = "${var.ecs_cluster_name}"
+    ALLOW_SCALE_DOWN    = "${var.allow_scale_down ? "True" : "False"}"
+    ALLOW_SCALE_UP      = "${var.allow_scale_up ? "True" : "False"}"
   }
 
   handler = "main.lambda_handler"
