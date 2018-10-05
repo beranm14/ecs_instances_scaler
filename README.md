@@ -28,6 +28,10 @@ This is little bit tricky. To downscale, there have to be enough free units on t
 
 If the Lambda function considers to upscale, it sends 1 to metric `AggregateScaleMetric`. In case of downscale, the -1 is sends. The alarms scaling is created by terraform, so it should add or remove the ec2 instance.
 
+## FlowChart
+
+![FlowChart](https://raw.githubusercontent.com/beranm14/ecs_instances_scaler/master/ecs_scale.png)
+
 ## Not solved problems
 
 Developer can create a task, which is bigger than instance's units. That means no matter what scaling happens, it would fail to start the task. In this case, give up, inform the developer this is not good, remove his task and the cluster will scale down as well.
