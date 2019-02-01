@@ -52,6 +52,21 @@ def lambda_handler(event, context):
         cluster=cluster_name,
         status='ACTIVE')
 
+    instance_list_draining = ecs.list_container_instances(
+        cluster=cluster_name,
+        status='DRAINING')
+
+    if len(instance_list_draining['containerInstanceArns']):
+        logger.info("Cluster is in inconsistent state, waiting for no DRAINING instances")
+        put_agr_metric(clw, cluster_name, 0)
+        logger.warning("Doing nothing")
+
+        return {
+            "statusCode": 200,
+            "body": json.dumps('Ended correctly')
+        }
+
+
     instances = ecs.describe_container_instances(
         cluster=cluster_name,
         containerInstances=instance_list['containerInstanceArns'])
