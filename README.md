@@ -33,3 +33,15 @@ If the Lambda function considers to upscale, it sends 1 to metric `AggregateScal
 Developer can create a task, which is bigger than instance's units. That means no matter what scaling happens, it would fail to start the task. In this case, give up, inform the developer this is not good, remove his task and the cluster will scale down as well.
 
 Also, this will not scale the tasks, that's the job of ECS scaling.
+
+## Usage
+
+```
+module "cluster-ecs-scaling" {
+  source                 = "git::https://github.com/beranm14/ecs_instances_scaler.git"
+  ecs_cluster_name       = "UP TO YOU"
+  autoscaling_group_name = "UP TO YOU"
+}
+```
+
+For further variables, check `variables.tf`.

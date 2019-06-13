@@ -79,6 +79,14 @@ def lambda_handler(event, context):
     services = ecs.list_services(
         cluster=cluster_name
     )
+    services_arns_list = set(services['serviceArns'])
+    while len(services['serviceArns']) and 'nextToken' in services:
+        services = ecs.list_services(
+            cluster=cluster_name,
+            nextToken=services['nextToken']
+        )
+        services_arns_list.union(set(services['serviceArns']))
+
 
     # creating list of remaining capacities on each instance
     instances_remaining_capacities = []
@@ -102,7 +110,7 @@ def lambda_handler(event, context):
 
     # collecting info about tasks running in services in cluster
     tasks_arns_from_cluster_services = []
-    for service in services['serviceArns']:
+    for service in services_arns_list:
         running_service = ecs.describe_services(
             cluster=cluster_name, services=[service]
         )
