@@ -9,6 +9,7 @@ from consider_remove_instance import consider_remove_instance_by_cpu
 from metrics import get_cpu_metric
 from metrics import put_agr_metric
 from metrics import get_memory_metric
+import pprint
 
 session = boto3.session.Session()
 logging.basicConfig()
@@ -51,6 +52,21 @@ def lambda_handler(event, context):
         cluster=cluster_name,
         status='ACTIVE')
 
+    instance_list_draining = ecs.list_container_instances(
+        cluster=cluster_name,
+        status='DRAINING')
+
+    if len(instance_list_draining['containerInstanceArns']):
+        logger.info("Cluster is in inconsistent state, waiting for no DRAINING instances")
+        put_agr_metric(clw, cluster_name, 0)
+        logger.warning("Doing nothing")
+
+        return {
+            "statusCode": 200,
+            "body": json.dumps('Ended correctly')
+        }
+
+
     instances = ecs.describe_container_instances(
         cluster=cluster_name,
         containerInstances=instance_list['containerInstanceArns'])
@@ -59,11 +75,15 @@ def lambda_handler(event, context):
     avg_cpu_usage = 0
 
     for instance in instances['containerInstances']:
+        logger.debug(instance['ec2InstanceId'])
         avg_cpu_usage += get_cpu_metric(clw, instance['ec2InstanceId'])
+        logger.debug(get_memory_metric(clw, instance['ec2InstanceId']))
         avg_memory_usage += get_memory_metric(clw, instance['ec2InstanceId'])
 
-    avg_memory_usage = avg_memory_usage / len(instances)
-    avg_cpu_usage = avg_cpu_usage / len(instances)
+    logger.debug("len(instances) " + str(len(instances['containerInstances'])))
+    avg_memory_usage = avg_memory_usage / len(instances['containerInstances'])
+    logger.debug("avg_memory_usage " + str(avg_memory_usage))
+    avg_cpu_usage = avg_cpu_usage / len(instances['containerInstances'])
 
     """
        In this part we are going to find out it the biggest task would fit in
@@ -112,7 +132,8 @@ def lambda_handler(event, context):
     tasks_arns_from_cluster_services = []
     for service in services_arns_list:
         running_service = ecs.describe_services(
-            cluster=cluster_name, services=[service]
+            cluster=cluster_name,
+            services=[service]
         )
         tasks_arns_from_cluster_services += [
             service['taskDefinition'] for service in running_service['services']
@@ -170,13 +191,16 @@ def lambda_handler(event, context):
             cluster=cluster_name,
             tasks=tasks_arns_from_cluster
     )['tasks']:
-        task_capacities += [
-            task_capacity(
-                task['memory'], task['cpu'],
-                task['containerInstanceArn'],
-                task['taskArn']
-            )
-        ]
+
+        #  Fargate service tasks do not have container instance arn
+        if 'containerInstanceArn' in task.keys():
+            task_capacities += [
+                task_capacity(
+                    task['memory'], task['cpu'],
+                    task['containerInstanceArn'],
+                    task['taskArn']
+                )
+            ]
     task_capacities_to_consider = task_capacities
 
     can_scale_down_by_reserved_memory = False
@@ -287,3 +311,4 @@ def lambda_handler(event, context):
 
 if __name__ == "__main__":
     lambda_handler("", "")
+
