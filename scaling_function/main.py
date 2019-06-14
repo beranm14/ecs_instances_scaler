@@ -99,13 +99,13 @@ def lambda_handler(event, context):
     services = ecs.list_services(
         cluster=cluster_name
     )
-    services_arns_list = set(services['serviceArns'])
+    services_arns_list = services['serviceArns']
     while len(services['serviceArns']) and 'nextToken' in services:
         services = ecs.list_services(
             cluster=cluster_name,
             nextToken=services['nextToken']
         )
-        services_arns_list.union(set(services['serviceArns']))
+        services_arns_list += services['serviceArns']
 
 
     # creating list of remaining capacities on each instance
